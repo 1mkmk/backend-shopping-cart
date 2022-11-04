@@ -1,4 +1,14 @@
-import {Body, CACHE_MANAGER, Get, HttpStatus, Inject, Injectable, Post, Query} from '@nestjs/common';
+import {
+    Body,
+    CACHE_MANAGER,
+    Get,
+    HttpStatus,
+    Inject,
+    Injectable,
+    InternalServerErrorException,
+    Post,
+    Query
+} from '@nestjs/common';
 import {HttpException} from "@nestjs/common/exceptions/http.exception";
 import {User} from "../user/user.decorator";
 import {plainToInstance} from "class-transformer";
@@ -50,7 +60,6 @@ export class CartService {
             }
         }
         displayCartDto.finalPrice = Math.round(displayCartDto.finalPrice * 100) / 100
-
         return displayCartDto;
     }
 
@@ -70,13 +79,15 @@ export class CartService {
             cartEntity.products.push(cartProductEntity)
             await this.cacheManager.set("cart:" + user.cartUuid, cartEntity)
         }
+        else {
+            throw new InternalServerErrorException()
+        }
     }
 
     async removeProductFromCart(@User() user, @Body() product: ProductDto) {
         let products = this.productService.findAll()
         let cartEntity = plainToInstance(CartEntity, await this.cacheManager.get("cart:" + user.cartUuid))
         let productEntity = products.find(p=>p.id===product.productId)
-        // console.log(product.productId)
         if (productEntity && cartEntity.products.map(cp => cp.productId).includes(productEntity.id)) {
             let index = cartEntity.products.map(cp=> cp.productId).indexOf(productEntity.id);
             if (index !== -1) {
@@ -84,10 +95,17 @@ export class CartService {
             }
             await this.cacheManager.set("cart:" + user.cartUuid, cartEntity)
         }
+        else {
+            throw new InternalServerErrorException()
+        }
     }
 
     @Post('changeProductAmount')
     async changeProductAmount(@User() user, @Body() product: ProductDto) {
+        if (product.amount <= 0)
+        {
+            throw new InternalServerErrorException()
+        }
         let products = this.productService.findAll()
         let cartEntity = plainToInstance(CartEntity, await this.cacheManager.get("cart:" + user.cartUuid))
         let productEntity = products.find(p=>p.id===product.productId)
@@ -95,6 +113,9 @@ export class CartService {
             let index = cartEntity.products.map(cp=> cp.productId).indexOf(productEntity.id);
             cartEntity.products.at(index).amount = product.amount
             await this.cacheManager.set("cart:" + user.cartUuid, cartEntity)
+        }
+        else {
+            throw new InternalServerErrorException()
         }
     }
 
@@ -107,6 +128,9 @@ export class CartService {
             cartEntity.discountId = discountEntity.id
             await this.cacheManager.set("cart:" + user.cartUuid, cartEntity)
         }
+        else {
+            throw new InternalServerErrorException()
+        }
     }
 
 
@@ -118,6 +142,9 @@ export class CartService {
         if (deliveryEntity) {
             cartEntity.deliveryId = deliveryEntity.id
             await this.cacheManager.set("cart:" + user.cartUuid, cartEntity)
+        }
+        else {
+            throw new InternalServerErrorException()
         }
     }
 
