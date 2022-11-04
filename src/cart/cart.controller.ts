@@ -10,7 +10,7 @@ import {Cart} from "./cart.decorator";
 @Controller('/api/v1/cart')
 export class CartController {
 
-    constructor(private cartService: CartService, @Inject(CACHE_MANAGER) private cacheManager: Cache) {
+    constructor(private cartService: CartService) {
     }
 
     @Get()
