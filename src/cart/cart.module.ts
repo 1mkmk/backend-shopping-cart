@@ -1,9 +1,10 @@
-import {MiddlewareConsumer, Module, NestModule, RequestMethod} from '@nestjs/common';
-import { CartController } from './cart.controller';
+import {Module} from '@nestjs/common';
+import {CartController} from './cart.controller';
 import {CartService} from "./cart.service";
 import {DeliveryModule} from "../delivery/delivery.module";
 import {DiscountModule} from "../discount/discount.module";
 import {ProductModule} from "../product/product.module";
+
 @Module({
     providers: [
         CartService

@@ -1,7 +1,7 @@
-import { AppService } from './app.service';
+import {AppService} from './app.service';
 import {CartModule} from "./cart/cart.module";
 import {MiddlewareConsumer, Module, NestModule} from '@nestjs/common';
-import { AppController } from './app.controller';
+import {AppController} from './app.controller';
 import {RedisModule} from "./redis/redis.module";
 import {JwtModule} from "@nestjs/jwt";
 import {AppMiddleware} from "./app.middleware";
