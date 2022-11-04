@@ -14,8 +14,9 @@ export class AppMiddleware implements NestMiddleware {
     constructor(private readonly jwtService: JwtService, @Inject(CACHE_MANAGER) private cacheManager: Cache) {
     }
 
-    async use(req: Request, @Res({passthrough: true}) res: Response, next: NextFunction) {
+    async use(req: any, @Res({passthrough: true}) res: Response, next: NextFunction) {
         let u
+        let c
         let token = req.cookies["token"]
         if (!token || token === null || token === "") {
             let userEntity = new UserEntity()
@@ -23,7 +24,6 @@ export class AppMiddleware implements NestMiddleware {
             userEntity.createdOn = Date.now()
             token = this.jwtService.sign(userEntity.uuid)
             res.cookie("token", token)
-
             let cartEntity = new CartEntity()
             cartEntity.uuid = randomUUID()
             cartEntity.ownerUuid = userEntity.uuid
@@ -41,20 +41,22 @@ export class AppMiddleware implements NestMiddleware {
                 userEntity.uuid = uuid.toString()
                 userEntity.createdOn = Date.now()
                 u = userEntity
-
                 let cartEntity = new CartEntity()
                 cartEntity.uuid = randomUUID()
                 cartEntity.ownerUuid = u.uuid
                 cartEntity.products = []
                 cartEntity.deliveryId = 1
                 userEntity.cartUuid = cartEntity.uuid
+                c = cartEntity
                 await this.cacheManager.set("cart:" + cartEntity.uuid, cartEntity)
                 await this.cacheManager.set("user:" + userEntity.uuid, userEntity)
-            } else{
+            } else {
                 u = plainToInstance(UserEntity, user)
+                c = await this.cacheManager.get("cart:" + u.cartUuid)
+                c = plainToInstance(CartEntity, c)
             }
         }
-
+        req.cart = c
         req.user = u
         next();
     }

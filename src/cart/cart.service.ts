@@ -22,6 +22,7 @@ import {Cache} from "cache-manager";
 import {DeliveryService} from "../delivery/delivery.service";
 import {DiscountService} from "../discount/discount.service";
 import {ProductService} from "../product/product.service";
+import {Cart} from "./cart.decorator";
 
 @Injectable()
 export class CartService {
@@ -29,11 +30,11 @@ export class CartService {
     constructor(private productService: ProductService, private discountService:  DiscountService, private deliveryService: DeliveryService, @Inject(CACHE_MANAGER) private cacheManager: Cache) {
     }
 
-    async getFormattedCart(@User() user) : Promise<DisplayCartDto> {
+    async getFormattedCart(@Cart() cart, @User() user) : Promise<DisplayCartDto> {
         let products = this.productService.findAll()
         let discounts = this.discountService.findAll()
         let deliveries = this.deliveryService.findAll()
-        let cartEntity = plainToInstance(CartEntity, await this.cacheManager.get("cart:" + user.cartUuid))
+        let cartEntity = cart
         let displayCartDto = new DisplayCartDto()
         let productsArray: CartProductEntity[] = []
         displayCartDto.finalPrice = 0
@@ -64,9 +65,9 @@ export class CartService {
     }
 
 
-    async addProductToCart(@User() user, @Body() product: ProductDto) {
+    async addProductToCart(@Cart() cart, @User() user,  @Body() product: ProductDto) {
         let products = this.productService.findAll()
-        let cartEntity = plainToInstance(CartEntity, await this.cacheManager.get("cart:" + user.cartUuid))
+        let cartEntity = cart
         let productEntity = products.find(p=>p.id===product.productId)
         let cartProductEntity = new CartProductEntity()
         if (productEntity && !cartEntity.products.map(cp => cp.productId).includes(productEntity.id)) {
@@ -84,9 +85,9 @@ export class CartService {
         }
     }
 
-    async removeProductFromCart(@User() user, @Body() product: ProductDto) {
+    async removeProductFromCart(@Cart() cart, @User() user,  @Body() product: ProductDto) {
         let products = this.productService.findAll()
-        let cartEntity = plainToInstance(CartEntity, await this.cacheManager.get("cart:" + user.cartUuid))
+        let cartEntity = cart
         let productEntity = products.find(p=>p.id===product.productId)
         if (productEntity && cartEntity.products.map(cp => cp.productId).includes(productEntity.id)) {
             let index = cartEntity.products.map(cp=> cp.productId).indexOf(productEntity.id);
@@ -101,13 +102,13 @@ export class CartService {
     }
 
     @Post('changeProductAmount')
-    async changeProductAmount(@User() user, @Body() product: ProductDto) {
+    async changeProductAmount(@Cart() cart, @User() user,  @Body() product: ProductDto) {
         if (product.amount <= 0)
         {
             throw new InternalServerErrorException()
         }
         let products = this.productService.findAll()
-        let cartEntity = plainToInstance(CartEntity, await this.cacheManager.get("cart:" + user.cartUuid))
+        let cartEntity = cart
         let productEntity = products.find(p=>p.id===product.productId)
         if (productEntity && cartEntity.products.map(cp => cp.productId).includes(productEntity.id)) {
             let index = cartEntity.products.map(cp=> cp.productId).indexOf(productEntity.id);
@@ -120,8 +121,8 @@ export class CartService {
     }
 
     @Post('addDiscountCode')
-    async addDiscountCode(@User() user, @Body() discount: DiscountDto) {
-        let cartEntity = plainToInstance(CartEntity, await this.cacheManager.get("cart:" + user.cartUuid))
+    async addDiscountCode(@Cart() cart, @User() user,  @Body() discount: DiscountDto) {
+        let cartEntity = cart
         let discounts = this.discountService.findAll()
         let discountEntity = discounts.find(d=>d.name===discount.discountCode)
         if (discountEntity) {
@@ -135,9 +136,9 @@ export class CartService {
 
 
     @Post('changeDeliveryType')
-    async changeDeliveryType(@User() user, @Body() delivery: DeliveryDto) {
+    async changeDeliveryType(@Cart() cart, @User() user,  @Body() delivery: DeliveryDto) {
         let deliveries = this.deliveryService.findAll()
-        let cartEntity = plainToInstance(CartEntity, await this.cacheManager.get("cart:" + user.cartUuid))
+        let cartEntity = cart
         let deliveryEntity = deliveries.find(d=>d.id===delivery.deliveryId)
         if (deliveryEntity) {
             cartEntity.deliveryId = deliveryEntity.id
@@ -154,11 +155,11 @@ export class CartService {
     }
 
     @Get('share')
-    async share(@User() user, @Query() query) {
+    async share(@Cart() cart, @User() user,  @Query() query) {
         let sharedCartUuid = query.uuid
         let sharedCartEntity = plainToInstance(CartEntity, await this.cacheManager.get("cart:" + sharedCartUuid))
         if (sharedCartEntity) {
-            let userCartEntity = plainToInstance(CartEntity, await this.cacheManager.get("cart:" + user.cartUuid))
+            let userCartEntity = cart
             userCartEntity.products = userCartEntity.products.concat(sharedCartEntity.products)
             userCartEntity.products = userCartEntity.products.reduce((acc, curr) => {
                 const objInAcc = acc.find((o) => o.productId === curr.productId);

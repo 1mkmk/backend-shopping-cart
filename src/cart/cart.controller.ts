@@ -13,6 +13,7 @@ import {DiscountDto} from "../discount/discount.dto";
 import {DisplayCartDto} from "./displayCart.dto";
 import {ProductEntity} from "../product/product.entity";
 import {CartService} from "./cart.service";
+import {Cart} from "./cart.decorator";
 
 @Controller('/api/v1/cart')
 export class CartController {
@@ -21,34 +22,34 @@ export class CartController {
     }
 
     @Get()
-    async getCart(@User() user) : Promise<any> {
-      return await this.cartService.getFormattedCart(user)
+    async getCart(@Cart() cart, @User() user) : Promise<any> {
+      return await this.cartService.getFormattedCart(cart,user)
     }
 
     @Post('addProduct')
-    async addProductToCart(@User() user, @Body() product: ProductDto) {
-        await this.cartService.addProductToCart(user, product)
+    async addProductToCart(@Cart() cart, @User() user, @Body() product: ProductDto) {
+        await this.cartService.addProductToCart(cart,user, product)
     }
 
     @Post('removeProduct')
-    async removeProductFromCart(@User() user, @Body() product: ProductDto) {
-        await this.cartService.removeProductFromCart(user, product)
+    async removeProductFromCart(@Cart() cart, @User() user, @Body() product: ProductDto) {
+        await this.cartService.removeProductFromCart(cart,user, product)
     }
 
     @Post('changeProductAmount')
-    async changeProductAmount(@User() user, @Body() product: ProductDto){
-        await this.cartService.changeProductAmount(user, product)
+    async changeProductAmount(@Cart() cart, @User() user, @Body() product: ProductDto){
+        await this.cartService.changeProductAmount(cart,user, product)
     }
 
     @Post('addDiscountCode')
-    async addDiscountCode(@User() user, @Body() discount: DiscountDto) {
-        await this.cartService.addDiscountCode(user, discount)
+    async addDiscountCode(@Cart() cart, @User() user, @Body() discount: DiscountDto) {
+        await this.cartService.addDiscountCode(cart,user, discount)
     }
 
 
     @Post('changeDeliveryType')
-    async changeDeliveryType(@User() user, @Body() delivery: DeliveryDto) {
-        await this.cartService.changeDeliveryType(user, delivery)
+    async changeDeliveryType(@Cart() cart, @User() user, @Body() delivery: DeliveryDto) {
+        await this.cartService.changeDeliveryType(cart,user, delivery)
     }
 
     @Get('generateShareLink')
@@ -58,8 +59,8 @@ export class CartController {
 
 
     @Get('share')
-    async share(@User() user, @Query() query) {
-        await this.cartService.share(user, query)
+    async share(@Cart() cart, @User() user, @Query() query) {
+        await this.cartService.share(cart,user, query)
     }
 
 }
