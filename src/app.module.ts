@@ -5,11 +5,13 @@ import {AppController} from './app.controller';
 import {RedisModule} from "./redis/redis.module";
 import {JwtModule} from "@nestjs/jwt";
 import {AppMiddleware} from "./app.middleware";
+import {UserModule} from "./user/user.module";
 
 @Module({
   imports: [
       RedisModule,
       CartModule,
+      UserModule,
       JwtModule.register({
           secret: 'michalklatkoski123',
       }),

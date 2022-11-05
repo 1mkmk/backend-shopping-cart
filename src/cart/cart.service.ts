@@ -1,10 +1,10 @@
-import {Body, CACHE_MANAGER, Get, Inject, Injectable, InternalServerErrorException, Post, Query} from '@nestjs/common';
+import {Body, CACHE_MANAGER, Get, Inject, Injectable, BadRequestException, Post, Query} from '@nestjs/common';
 import {User} from "../user/user.decorator";
 import {plainToInstance} from "class-transformer";
 import {CartEntity} from "./cart.entity";
 import {DisplayCartDto} from "./displayCart.dto";
 import {CartProductEntity} from "./cartProduct/cartProduct.entity";
-import {ProductDto} from "./product.dto";
+import {ProductDto} from "../product/product.dto";
 import {DiscountDto} from "../discount/discount.dto";
 import {DeliveryDto} from "../delivery/delivery.dto";
 import {Cache} from "cache-manager";
@@ -19,7 +19,7 @@ export class CartService {
     constructor(private productService: ProductService, private discountService:  DiscountService, private deliveryService: DeliveryService, @Inject(CACHE_MANAGER) private cacheManager: Cache) {
     }
 
-    async getFormattedCart(@Cart() cart, @User() user) : Promise<DisplayCartDto> {
+    async getFormattedCart(cart, user) : Promise<DisplayCartDto> {
         let products = this.productService.findAll()
         let discounts = this.discountService.findAll()
         let deliveries = this.deliveryService.findAll()
@@ -27,18 +27,22 @@ export class CartService {
         let displayCartDto = new DisplayCartDto()
         let productsArray: CartProductEntity[] = []
         displayCartDto.finalPrice = 0
-        cartEntity.products.forEach(cp => {
-            let index = products.map(p => p.id).indexOf(cp.productId);
-            if (index !== -1) {
-                displayCartDto.finalPrice += products[index].price * cp.amount
-                let cartProductEntity = plainToInstance(CartProductEntity, products[index])
-                cartProductEntity.amount = cp.amount
-                productsArray.push(cartProductEntity)
-            }
-        })
+        if (cartEntity.products) {
+            cartEntity.products.forEach(cp => {
+                let index = products.map(p => p.id).indexOf(cp.productId);
+                if (index !== -1) {
+                    displayCartDto.finalPrice += products[index].price * cp.amount
+                    let cartProductEntity = plainToInstance(CartProductEntity, products[index])
+                    cartProductEntity.amount = cp.amount
+                    productsArray.push(cartProductEntity)
+                }
+            })
+        }
         displayCartDto.productsPrice = displayCartDto.finalPrice
         displayCartDto.products = productsArray
-        displayCartDto.discount = discounts.find(d => d.id === cartEntity.discountId)
+        if (cartEntity.discountId) {
+            displayCartDto.discount = discounts.find(d => d.id === cartEntity.discountId)
+        }
         displayCartDto.delivery = deliveries.find(d => d.id === cartEntity.deliveryId)
         displayCartDto.finalPrice += displayCartDto.delivery.price;
 
@@ -54,7 +58,7 @@ export class CartService {
     }
 
 
-    async addProductToCart(@Cart() cart, @User() user,  @Body() product: ProductDto) {
+    async addProductToCart(cart, user, product: ProductDto) {
         let products = this.productService.findAll()
         let cartEntity = cart
         let productEntity = products.find(p=>p.id===product.productId)
@@ -70,11 +74,11 @@ export class CartService {
             await this.cacheManager.set("cart:" + user.cartUuid, cartEntity)
         }
         else {
-            throw new InternalServerErrorException()
+            throw new BadRequestException()
         }
     }
 
-    async removeProductFromCart(@Cart() cart, @User() user,  @Body() product: ProductDto) {
+    async removeProductFromCart(cart, user, product: ProductDto) {
         let products = this.productService.findAll()
         let cartEntity = cart
         let productEntity = products.find(p=>p.id===product.productId)
@@ -86,15 +90,15 @@ export class CartService {
             await this.cacheManager.set("cart:" + user.cartUuid, cartEntity)
         }
         else {
-            throw new InternalServerErrorException()
+            throw new BadRequestException()
         }
     }
 
     @Post('changeProductAmount')
-    async changeProductAmount(@Cart() cart, @User() user,  @Body() product: ProductDto) {
+    async changeProductAmount(cart, user, product: ProductDto) {
         if (product.amount <= 0)
         {
-            throw new InternalServerErrorException()
+            throw new BadRequestException()
         }
         let products = this.productService.findAll()
         let cartEntity = cart
@@ -105,12 +109,12 @@ export class CartService {
             await this.cacheManager.set("cart:" + user.cartUuid, cartEntity)
         }
         else {
-            throw new InternalServerErrorException()
+            throw new BadRequestException()
         }
     }
 
     @Post('addDiscountCode')
-    async addDiscountCode(@Cart() cart, @User() user,  @Body() discount: DiscountDto) {
+    async addDiscountCode(cart, user, discount: DiscountDto) {
         let cartEntity = cart
         let discounts = this.discountService.findAll()
         let discountEntity = discounts.find(d=>d.name===discount.discountCode)
@@ -119,13 +123,13 @@ export class CartService {
             await this.cacheManager.set("cart:" + user.cartUuid, cartEntity)
         }
         else {
-            throw new InternalServerErrorException()
+            throw new BadRequestException()
         }
     }
 
 
     @Post('changeDeliveryType')
-    async changeDeliveryType(@Cart() cart, @User() user,  @Body() delivery: DeliveryDto) {
+    async changeDeliveryType(cart, user, delivery: DeliveryDto) {
         let deliveries = this.deliveryService.findAll()
         let cartEntity = cart
         let deliveryEntity = deliveries.find(d=>d.id===delivery.deliveryId)
@@ -134,17 +138,17 @@ export class CartService {
             await this.cacheManager.set("cart:" + user.cartUuid, cartEntity)
         }
         else {
-            throw new InternalServerErrorException()
+            throw new BadRequestException()
         }
     }
 
     @Get('generateShareLink')
-    generateShareLink(@User() user) : string {
+    generateShareLink(user) : string {
         return "http://localhost:3000/api/v1/cart/share?uuid="+user.cartUuid
     }
 
     @Get('share')
-    async share(@Cart() cart, @User() user,  @Query() query) {
+    async share(cart, user,  @Query() query) {
         let sharedCartUuid = query.uuid
         let sharedCartEntity = plainToInstance(CartEntity, await this.cacheManager.get("cart:" + sharedCartUuid))
         if (sharedCartEntity) {
@@ -159,5 +163,9 @@ export class CartService {
 
             await this.cacheManager.set("cart:" + user.cartUuid, userCartEntity)
         }
+    }
+
+    async getCartByUuid(cartUuid: string){
+        return await this.cacheManager.get("cart:" + cartUuid)
     }
 }

@@ -1,6 +1,6 @@
 import {Cache} from 'cache-manager'
 import {Body, CACHE_MANAGER, Controller, Get, Inject, Post, Query} from '@nestjs/common';
-import {ProductDto} from "./product.dto";
+import {ProductDto} from "../product/product.dto";
 import {User} from "../user/user.decorator";
 import {DeliveryDto} from "../delivery/delivery.dto";
 import {DiscountDto} from "../discount/discount.dto";

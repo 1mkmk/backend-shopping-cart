@@ -6,12 +6,15 @@ import {JwtService} from "@nestjs/jwt";
 import {UserEntity} from "./user/user.entity";
 import {plainToInstance} from 'class-transformer';
 import {CartEntity} from "./cart/cart.entity";
+import {UserService} from "./user/user.service";
+import {CartService} from "./cart/cart.service";
+import cookieParser from "cookie-parser";
 
 
 @Injectable()
 export class AppMiddleware implements NestMiddleware {
 
-    constructor(private readonly jwtService: JwtService, @Inject(CACHE_MANAGER) private cacheManager: Cache) {
+    constructor(private userService: UserService,private cartService: CartService, private readonly jwtService: JwtService) {
     }
 
     async use(req: any, @Res({passthrough: true}) res: Response, next: NextFunction) {
@@ -19,40 +22,25 @@ export class AppMiddleware implements NestMiddleware {
         let c
         let token = req.cookies["token"]
         if (!token || token === null || token === "") {
-            let userEntity = new UserEntity()
-            userEntity.uuid = randomUUID()
-            userEntity.createdOn = Date.now()
-            token = this.jwtService.sign(userEntity.uuid)
-            res.cookie("token", token)
-            let cartEntity = new CartEntity()
-            cartEntity.uuid = randomUUID()
-            cartEntity.ownerUuid = userEntity.uuid
-            cartEntity.products = []
-            cartEntity.deliveryId = 1
-            userEntity.cartUuid = cartEntity.uuid
-            await this.cacheManager.set("cart:" + cartEntity.uuid, cartEntity)
-            await this.cacheManager.set("user:" + userEntity.uuid, userEntity)
-            u = userEntity
+            let userAndCartEntity = await this.userService.createUserAndCart()
+            token = this.jwtService.sign(userAndCartEntity[0].uuid)
+            let options = {
+                maxAge: 1000 * 60 * 60,
+                httpOnly: true
+            }
+            res.cookie("token", token,options)
+            u = userAndCartEntity[0]
+            c = userAndCartEntity[1]
         } else {
-            let uuid =this.jwtService.decode(token)
-            let user = await this.cacheManager.get("user:" + uuid)
+            let uuid = this.jwtService.decode(token)
+            let user = await this.userService.getUserByUuid(uuid.toString())
             if (!user) {
-                let userEntity = new UserEntity()
-                userEntity.uuid = uuid.toString()
-                userEntity.createdOn = Date.now()
-                u = userEntity
-                let cartEntity = new CartEntity()
-                cartEntity.uuid = randomUUID()
-                cartEntity.ownerUuid = u.uuid
-                cartEntity.products = []
-                cartEntity.deliveryId = 1
-                userEntity.cartUuid = cartEntity.uuid
-                c = cartEntity
-                await this.cacheManager.set("cart:" + cartEntity.uuid, cartEntity)
-                await this.cacheManager.set("user:" + userEntity.uuid, userEntity)
+                let userAndCartEntity = await this.userService.createUserAndCart(uuid.toString())
+                u = userAndCartEntity[0]
+                c = userAndCartEntity[1]
             } else {
                 u = plainToInstance(UserEntity, user)
-                c = await this.cacheManager.get("cart:" + u.cartUuid)
+                c = await this.cartService.getCartByUuid(u.cartUuid)
                 c = plainToInstance(CartEntity, c)
             }
         }
